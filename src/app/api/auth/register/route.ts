@@ -17,10 +17,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const existing = await User.findOne({ email: email.toLowerCase() });
+    const existing = await User.findOne({ email: email.toLowerCase().trim() });
     if (existing) {
       return NextResponse.json(
-        { error: "An account with this email already exists." },
+        { error: "An account with this email already exists. Try signing in!" },
         { status: 409 }
       );
     }
@@ -50,11 +50,22 @@ export async function POST(request: Request) {
     });
 
     return response;
-  } catch (err) {
+  } catch (err: unknown) {
     console.error("Register error:", err);
-    return NextResponse.json(
-      { error: "Database registration failed." },
-      { status: 500 }
-    );
+    const rawMsg = err instanceof Error ? err.message : "Unknown database error";
+
+    let friendlyError = `Database error: ${rawMsg}`;
+    if (rawMsg.includes("bad auth") || rawMsg.includes("Authentication failed")) {
+      friendlyError =
+        "MongoDB Atlas password mismatch: Go to Atlas -> Database Access -> Edit priyadharshan802_db_user and set password to 2006.";
+    } else if (
+      rawMsg.includes("Could not connect to any servers") ||
+      rawMsg.includes("ServerSelectionError")
+    ) {
+      friendlyError =
+        "MongoDB Atlas IP blocked: Go to Atlas -> Network Access -> Add IP Address -> Allow Access from Anywhere (0.0.0.0/0).";
+    }
+
+    return NextResponse.json({ error: friendlyError }, { status: 500 });
   }
 }
