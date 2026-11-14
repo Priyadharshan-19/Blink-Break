@@ -1,12 +1,15 @@
 // src/app/(dashboard)/layout.tsx
 "use client";
 
-import React, { useEffect } from "react";
-import { ShieldCheck, Play } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { ShieldCheck, Play, Loader2 } from "lucide-react";
 import Sidebar from "@/components/layout/Sidebar";
 import FloatingTimerWidget from "@/components/timer/FloatingTimerWidget";
 import BreakPopupModal from "@/components/timer/BreakPopupModal";
 import { useTimerStore } from "@/store/useTimerStore";
+import { useTrackerStore } from "@/store/useTrackerStore";
+import { useSettingsStore } from "@/store/useSettingsStore";
 import { usePrivacyActivityDetector } from "@/lib/activityDetector";
 
 export default function DashboardLayout({
@@ -14,11 +17,35 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  const hydrateFromMongo = useTrackerStore((s) => s.hydrateFromMongo);
   const tick = useTimerStore((s) => s.tick);
   const resumeTimer = useTimerStore((s) => s.resumeTimer);
+  const syncWithSettings = useTimerStore((s) => s.syncWithSettings);
   const { isIdlePaused, idleSeconds } = usePrivacyActivityDetector();
 
   useEffect(() => {
+    let mounted = true;
+    hydrateFromMongo().then((authenticated) => {
+      if (!mounted) return;
+      if (!authenticated) {
+        router.replace("/login");
+      } else {
+        const { workDurationMinutes, breakDurationSeconds } =
+          useSettingsStore.getState();
+        syncWithSettings(workDurationMinutes, breakDurationSeconds);
+        setCheckingAuth(false);
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [hydrateFromMongo, router, syncWithSettings]);
+
+  useEffect(() => {
+    if (checkingAuth) return;
     let worker: Worker | null = null;
     let fallbackInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -43,7 +70,18 @@ export default function DashboardLayout({
       }
       if (fallbackInterval) clearInterval(fallbackInterval);
     };
-  }, [tick]);
+  }, [checkingAuth, tick]);
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3">
+        <Loader2 className="w-8 h-8 text-[#7C6FF6] animate-spin" />
+        <p className="text-sm font-bold text-[#5B5E7B] dark:text-[#A3A6C9]">
+          Loading your workspace from MongoDB...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex">

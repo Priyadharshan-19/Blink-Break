@@ -1,45 +1,58 @@
+// src/app/(marketing)/login/page.tsx
 "use client";
 
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Mail, Lock, Sparkles } from "lucide-react";
+import { ArrowRight, Mail, Lock, AlertCircle, Loader2 } from "lucide-react";
 import { BlinkBreakLogo, MascotIllustration } from "@/components/ui/BrandPrimitives";
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem(
-      "blinkbreak-user",
-      JSON.stringify({ name: email.split("@")[0] || "Alex", email })
-    );
-    router.push("/dashboard");
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Invalid credentials");
+      } else {
+        router.push("/dashboard");
+      }
+    } catch {
+      setError("Unable to connect to authentication server.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="glass-card rounded-[32px] max-w-4xl w-full grid grid-cols-1 md:grid-cols-12 overflow-hidden">
-        {/* Left Mascot Welcome Panel */}
         <div className="md:col-span-5 bg-gradient-to-b from-[#EBE8FF] to-[#DCE6FF] dark:from-[#1E203B] dark:to-[#171930] p-8 flex flex-col justify-between items-center text-center">
           <Link href="/" className="self-start">
             <BlinkBreakLogo size="sm" />
           </Link>
           <MascotIllustration variant="hero" className="w-52 h-52 my-4" />
-          <div>
-            <p
-              className="text-2xl font-bold text-[#3B3561] dark:text-[#D6CEFF]"
-              style={{ fontFamily: "var(--font-caveat)" }}
-            >
-              Welcome back! Ready for a cozy focus session? ♡
-            </p>
-          </div>
+          <p
+            className="text-2xl font-bold text-[#3B3561] dark:text-[#D6CEFF]"
+            style={{ fontFamily: "var(--font-caveat)" }}
+          >
+            Welcome back! Ready for a cozy focus session? ♡
+          </p>
         </div>
 
-        {/* Right Form Panel */}
         <div className="md:col-span-7 p-8 sm:p-10 flex flex-col justify-center">
           <h1
             className="text-2xl sm:text-3xl font-extrabold text-[#14162E] dark:text-white"
@@ -48,8 +61,15 @@ export default function LoginPage() {
             Sign in to BlinkBreak
           </h1>
           <p className="text-sm text-[#5B5E7B] dark:text-[#A3A6C9] mt-1">
-            Sync your 20-20-20 streaks, virtual plant, and custom routines.
+            Access your real-time MongoDB 20-20-20 streaks, virtual plant, and routines.
           </p>
+
+          {error && (
+            <div className="mt-4 p-3.5 rounded-2xl bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 text-xs font-bold flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
           <form onSubmit={handleLogin} className="space-y-4 mt-6">
             <div>
@@ -86,28 +106,34 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <button type="submit" className="pill-btn-primary w-full justify-center py-3.5 mt-2">
-              <span>Sign In</span>
-              <ArrowRight className="w-4 h-4" />
+            <button
+              type="submit"
+              disabled={loading}
+              className="pill-btn-primary w-full justify-center py-3.5 mt-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Signing in...</span>
+                </>
+              ) : (
+                <>
+                  <span>Sign In</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           </form>
 
-          <div className="mt-4 pt-4 border-t border-[#DCD8F6]/60 dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="text-xs text-[#5B5E7B] dark:text-[#A3A6C9] mt-6 text-center">
+            New here?{" "}
             <Link
-              href="/dashboard"
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#7C6FF6] hover:underline"
+              href="/register"
+              className="font-bold text-[#14162E] dark:text-white underline"
             >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Continue in Instant Guest Mode</span>
+              Create an account
             </Link>
-
-            <p className="text-xs text-[#5B5E7B] dark:text-[#A3A6C9]">
-              New here?{" "}
-              <Link href="/register" className="font-bold text-[#14162E] dark:text-white underline">
-                Create an account
-              </Link>
-            </p>
-          </div>
+          </p>
         </div>
       </div>
     </div>

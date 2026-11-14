@@ -1,7 +1,7 @@
 // src/app/(dashboard)/routines/page.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Plus,
   Play,
@@ -17,77 +17,15 @@ import {
 import TopHeader from "@/components/layout/TopHeader";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useTimerStore } from "@/store/useTimerStore";
-
-export interface BreakRoutine {
-  id: string;
-  name: string;
-  tag: string;
-  workMinutes: number;
-  breakSeconds: number;
-  activity: string;
-  schedule: string;
-  soundAlert: boolean;
-}
-
-const DEFAULT_ROUTINES: BreakRoutine[] = [
-  {
-    id: "dev-routine",
-    name: "Developer Routine",
-    tag: "Coding & Debugging",
-    workMinutes: 20,
-    breakSeconds: 20,
-    activity: "20-Foot Distant Gaze + Shoulder Roll",
-    schedule: "Mon–Fri • 09:00 – 18:00",
-    soundAlert: true,
-  },
-  {
-    id: "student-routine",
-    name: "Student Routine",
-    tag: "Lectures & Notes",
-    workMinutes: 25,
-    breakSeconds: 25,
-    activity: "Gentle Blinking Reset + Box Breathing",
-    schedule: "Daily • 08:00 – 21:00",
-    soundAlert: true,
-  },
-  {
-    id: "deep-work",
-    name: "Deep Work Routine",
-    tag: "Architecture & Writing",
-    workMinutes: 30,
-    breakSeconds: 30,
-    activity: "Figure-8 Eye Relaxation",
-    schedule: "Morning Blocks • 08:30 – 13:00",
-    soundAlert: true,
-  },
-  {
-    id: "exam-prep",
-    name: "Exam Preparation Routine",
-    tag: "High-Intensity Revision",
-    workMinutes: 25,
-    breakSeconds: 20,
-    activity: "Warm Eye Palming Sanctuary",
-    schedule: "Evenings • 18:00 – 23:00",
-    soundAlert: true,
-  },
-  {
-    id: "relax-routine",
-    name: "Evening Relaxation Routine",
-    tag: "Low-Glare Browsing",
-    workMinutes: 15,
-    breakSeconds: 30,
-    activity: "Nature Break Rainy Window",
-    schedule: "Night • After 20:00",
-    soundAlert: false,
-  },
-];
+import { useTrackerStore, BreakRoutine } from "@/store/useTrackerStore";
 
 export default function CustomRoutinesPage() {
-  const [routines, setRoutines] = useState<BreakRoutine[]>(DEFAULT_ROUTINES);
-  const [activeRoutineId, setActiveRoutineId] = useState<string>("dev-routine");
+  const { routines, saveRoutinesToMongo } = useTrackerStore();
+  const [activeRoutineId, setActiveRoutineId] = useState<string>(
+    routines[0]?.id || "dev-routine"
+  );
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // Form states
   const [name, setName] = useState("");
   const [tag, setTag] = useState("Custom Workflow");
   const [workMinutes, setWorkMinutes] = useState(20);
@@ -100,24 +38,6 @@ export default function CustomRoutinesPage() {
   const updateSmartSettings = useSettingsStore((s) => s.updateSmartSettings);
   const syncWithSettings = useTimerStore((s) => s.syncWithSettings);
 
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("blinkbreak-routines-v1");
-      if (saved) setRoutines(JSON.parse(saved));
-    } catch {
-      // ignore storage errors
-    }
-  }, []);
-
-  const persistRoutines = (next: BreakRoutine[]) => {
-    setRoutines(next);
-    try {
-      localStorage.setItem("blinkbreak-routines-v1", JSON.stringify(next));
-    } catch {
-      // ignore
-    }
-  };
-
   const handleActivate = (r: BreakRoutine) => {
     setActiveRoutineId(r.id);
     updateIntervals(r.workMinutes, r.breakSeconds);
@@ -125,7 +45,7 @@ export default function CustomRoutinesPage() {
     syncWithSettings(r.workMinutes, r.breakSeconds);
   };
 
-  const handleSaveForm = (e: React.FormEvent) => {
+  const handleSaveForm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
@@ -135,7 +55,7 @@ export default function CustomRoutinesPage() {
           ? { ...r, name, tag, workMinutes, breakSeconds, activity, schedule, soundAlert }
           : r
       );
-      persistRoutines(updated);
+      await saveRoutinesToMongo(updated);
       setEditingId(null);
     } else {
       const created: BreakRoutine = {
@@ -148,7 +68,7 @@ export default function CustomRoutinesPage() {
         schedule,
         soundAlert,
       };
-      persistRoutines([created, ...routines]);
+      await saveRoutinesToMongo([created, ...routines]);
     }
 
     setName("");
@@ -168,17 +88,17 @@ export default function CustomRoutinesPage() {
     setSoundAlert(r.soundAlert);
   };
 
-  const handleDuplicate = (r: BreakRoutine) => {
+  const handleDuplicate = async (r: BreakRoutine) => {
     const copy: BreakRoutine = {
       ...r,
       id: `routine-${Date.now()}`,
       name: `${r.name} (Copy)`,
     };
-    persistRoutines([copy, ...routines]);
+    await saveRoutinesToMongo([copy, ...routines]);
   };
 
-  const handleDelete = (id: string) => {
-    persistRoutines(routines.filter((r) => r.id !== id));
+  const handleDelete = async (id: string) => {
+    await saveRoutinesToMongo(routines.filter((r) => r.id !== id));
   };
 
   return (
@@ -186,7 +106,6 @@ export default function CustomRoutinesPage() {
       <TopHeader />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* LEFT COLUMN: Create / Edit Routine Form (4 Cols) */}
         <form
           onSubmit={handleSaveForm}
           className="lg:col-span-4 glass-card rounded-[32px] p-6 space-y-4 h-fit"
@@ -309,11 +228,10 @@ export default function CustomRoutinesPage() {
 
           <button type="submit" className="pill-btn-primary w-full justify-center py-3 text-xs sm:text-sm">
             <Plus className="w-4 h-4" />
-            <span>{editingId ? "Update Routine" : "Save New Routine"}</span>
+            <span>{editingId ? "Update Routine in MongoDB" : "Save Routine to MongoDB"}</span>
           </button>
         </form>
 
-        {/* RIGHT COLUMN: Routines List (8 Cols) */}
         <div className="lg:col-span-8 space-y-4">
           {routines.map((r) => {
             const isActive = activeRoutineId === r.id;
@@ -363,7 +281,6 @@ export default function CustomRoutinesPage() {
                   </div>
                 </div>
 
-                {/* CRUD & Activate Controls */}
                 <div className="flex items-center gap-2 self-end sm:self-center flex-shrink-0">
                   <button
                     onClick={() => handleActivate(r)}

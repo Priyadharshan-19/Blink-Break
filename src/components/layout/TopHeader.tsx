@@ -5,25 +5,17 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Bell, ChevronDown, Sun, Moon } from "lucide-react";
 import { useSettingsStore } from "@/store/useSettingsStore";
+import { useTrackerStore } from "@/store/useTrackerStore";
 import { requestNotificationPermission } from "@/lib/notifications";
 
 export default function TopHeader() {
   const { theme, toggleTheme } = useSettingsStore();
-  const [userName, setUserName] = useState("Priyadharshan");
+  const userName = useTrackerStore((s) => s.userName) || "User";
   const [notifGranted, setNotifGranted] = useState(false);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("blinkbreak-user");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.name) setUserName(parsed.name);
-      }
-      if (typeof window !== "undefined" && "Notification" in window) {
-        setNotifGranted(Notification.permission === "granted");
-      }
-    } catch {
-      // Ignore storage errors
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setNotifGranted(Notification.permission === "granted");
     }
   }, []);
 
@@ -34,14 +26,13 @@ export default function TopHeader() {
 
   const getGreeting = () => {
     const hr = new Date().getHours();
-    if (hr < 12) return "Good Morning!";
-    if (hr < 17) return "Good Afternoon!";
-    return "Good Evening!";
+    if (hr < 12) return `Good Morning, ${userName.split(" ")[0]}!`;
+    if (hr < 17) return `Good Afternoon, ${userName.split(" ")[0]}!`;
+    return `Good Evening, ${userName.split(" ")[0]}!`;
   };
 
   return (
     <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 pb-6 pr-0 xl:pr-72">
-      {/* Left Sun Icon + Greeting (Matches Reference Image 2) */}
       <div className="flex items-center gap-3.5">
         <div className="w-12 h-12 rounded-2xl bg-[#FFF3C4] dark:bg-amber-500/20 flex items-center justify-center shadow-sm flex-shrink-0">
           <svg viewBox="0 0 40 40" className="w-8 h-8">
@@ -72,7 +63,6 @@ export default function TopHeader() {
         </div>
       </div>
 
-      {/* Right Notification Bell, Theme Toggle & Avatar Pill */}
       <div className="flex items-center gap-3 self-end sm:self-auto">
         <button
           onClick={handleEnableNotifications}

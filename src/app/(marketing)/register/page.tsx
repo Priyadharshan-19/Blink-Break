@@ -1,9 +1,10 @@
+// src/app/(marketing)/register/page.tsx
 "use client";
 
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, User, Mail, Lock } from "lucide-react";
+import { ArrowRight, User, Mail, Lock, AlertCircle, Loader2 } from "lucide-react";
 import { BlinkBreakLogo, MascotIllustration } from "@/components/ui/BrandPrimitives";
 
 export default function RegisterPage() {
@@ -11,11 +12,30 @@ export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem("blinkbreak-user", JSON.stringify({ name: name || "Alex", email }));
-    router.push("/dashboard");
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Registration failed");
+      } else {
+        router.push("/dashboard");
+      }
+    } catch {
+      setError("Unable to connect to database server.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -42,8 +62,15 @@ export default function RegisterPage() {
             Create Your BlinkBreak Account
           </h1>
           <p className="text-sm text-[#5B5E7B] dark:text-[#A3A6C9] mt-1">
-            Start with our recommended 20-20-20 timer or customize your routine.
+            Backed by real-time MongoDB persistence across all your devices.
           </p>
+
+          {error && (
+            <div className="mt-4 p-3.5 rounded-2xl bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 text-xs font-bold flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
           <form onSubmit={handleRegister} className="space-y-4 mt-6">
             <div>
@@ -82,13 +109,14 @@ export default function RegisterPage() {
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-[#5B5E7B] dark:text-[#A3A6C9] mb-1.5">
-                Password
+                Password (min 6 characters)
               </label>
               <div className="relative">
                 <Lock className="w-4 h-4 text-[#7C6FF6] absolute left-4 top-3.5" />
                 <input
                   type="password"
                   required
+                  minLength={6}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Create a strong password"
@@ -97,15 +125,31 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <button type="submit" className="pill-btn-primary w-full justify-center py-3.5 mt-2">
-              <span>Start Using BlinkBreak</span>
-              <ArrowRight className="w-4 h-4" />
+            <button
+              type="submit"
+              disabled={loading}
+              className="pill-btn-primary w-full justify-center py-3.5 mt-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Creating Account in MongoDB...</span>
+                </>
+              ) : (
+                <>
+                  <span>Start Using BlinkBreak</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           </form>
 
           <p className="text-xs text-[#5B5E7B] dark:text-[#A3A6C9] mt-5 text-center">
             Already have an account?{" "}
-            <Link href="/login" className="font-bold text-[#14162E] dark:text-white underline">
+            <Link
+              href="/login"
+              className="font-bold text-[#14162E] dark:text-white underline"
+            >
               Sign In
             </Link>
           </p>
