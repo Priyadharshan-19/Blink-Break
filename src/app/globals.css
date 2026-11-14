@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-primary: #F6F5FF;
+    --bg-secondary: #ECEAFD;
+    --surface-glass: rgba(255, 255, 255, 0.78);
+    --surface-border: rgba(255, 255, 255, 0.92);
+    --text-navy: #14162E;
+    --text-muted: #5B5E7B;
+    --accent-iris: #7C6FF6;
+    --accent-lavender: #DED9FF;
+    --accent-mint: #48C78E;
+    --shadow-soft: 0 14px 34px -6px rgba(115, 103, 210, 0.11);
+  }
+
+  .dark {
+    --bg-primary: #111222;
+    --bg-secondary: #181A30;
+    --surface-glass: rgba(28, 30, 54, 0.78);
+    --surface-border: rgba(255, 255, 255, 0.1);
+    --text-navy: #F4F4FF;
+    --text-muted: #A3A6C9;
+    --accent-iris: #9186FF;
+    --accent-lavender: #2A2C4E;
+    --accent-mint: #52DCA0;
+    --shadow-soft: 0 14px 34px -6px rgba(0, 0, 0, 0.45);
+  }
+
+  body {
+    background: radial-gradient(circle at 15% 15%, var(--bg-secondary) 0%, var(--bg-primary) 55%, #E8F0FF 100%);
+    color: var(--text-navy);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .dark body {
+    background: radial-gradient(circle at 15% 15%, #1A1C35 0%, #111222 65%, #0D0E1B 100%);
+  }
+}
+
+@layer components {
+  .glass-card {
+    background: var(--surface-glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1.5px solid var(--surface-border);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .pill-btn-primary {
+    @apply bg-[#14162E] dark:bg-[#7C6FF6] text-white font-semibold rounded-full px-6 py-3 
+           inline-flex items-center gap-2 transition-all duration-200 
+           hover:scale-[1.02] hover:shadow-lg active:scale-[0.98];
+  }
+}
+
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0px) rotate(-1deg); }
+  50% { transform: translateY(-8px) rotate(0.5deg); }
+}
+
+@keyframes floatDelayed {
+  0%, 100% { transform: translateY(0px) rotate(1deg); }
+  50% { transform: translateY(-6px) rotate(-0.5deg); }
+}
+
+.animate-float-slow {
+  animation: floatSlow 5.5s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: floatDelayed 6.2s ease-in-out 1.2s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float-slow,
+  .animate-float-delayed {
+    animation: none !important;
+  }
+}
