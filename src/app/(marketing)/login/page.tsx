@@ -1,3 +1,4 @@
+
 // src/app/(marketing)/login/page.tsx
 "use client";
 
@@ -14,24 +15,39 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Updated login handler
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
+
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
+
+      const contentType = res.headers.get("content-type") || "";
+
+      // Safely handle non-JSON responses (404, 500, etc.)
+      if (!contentType.includes("application/json")) {
+        setError(
+          `API Route Error (${res.status}): Make sure src/app/api/auth/login/route.ts exists and your dev server is running.`
+        );
+        return;
+      }
+
       const data = await res.json();
+
       if (!res.ok) {
         setError(data.error || "Invalid credentials");
       } else {
         router.push("/dashboard");
       }
-    } catch {
-      setError("Unable to connect to authentication server.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Network error";
+      setError(`Connection error: ${msg}`);
     } finally {
       setLoading(false);
     }
@@ -44,7 +60,9 @@ export default function LoginPage() {
           <Link href="/" className="self-start">
             <BlinkBreakLogo size="sm" />
           </Link>
+
           <MascotIllustration variant="hero" className="w-52 h-52 my-4" />
+
           <p
             className="text-2xl font-bold text-[#3B3561] dark:text-[#D6CEFF]"
             style={{ fontFamily: "var(--font-caveat)" }}
@@ -60,6 +78,7 @@ export default function LoginPage() {
           >
             Sign in to BlinkBreak
           </h1>
+
           <p className="text-sm text-[#5B5E7B] dark:text-[#A3A6C9] mt-1">
             Access your real-time MongoDB 20-20-20 streaks, virtual plant, and routines.
           </p>
@@ -76,8 +95,10 @@ export default function LoginPage() {
               <label className="block text-xs font-bold uppercase tracking-wider text-[#5B5E7B] dark:text-[#A3A6C9] mb-1.5">
                 Email Address
               </label>
+
               <div className="relative">
                 <Mail className="w-4 h-4 text-[#7C6FF6] absolute left-4 top-3.5" />
+
                 <input
                   type="email"
                   required
@@ -93,8 +114,10 @@ export default function LoginPage() {
               <label className="block text-xs font-bold uppercase tracking-wider text-[#5B5E7B] dark:text-[#A3A6C9] mb-1.5">
                 Password
               </label>
+
               <div className="relative">
                 <Lock className="w-4 h-4 text-[#7C6FF6] absolute left-4 top-3.5" />
+
                 <input
                   type="password"
                   required
